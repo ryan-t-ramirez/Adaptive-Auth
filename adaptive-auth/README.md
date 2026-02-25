@@ -1,6 +1,6 @@
 # Adaptive Authentication Framework
 
-A full-stack risk-based authentication system that dynamically adjusts security requirements based on real-time contextual signals. Low-risk logins proceed with password-only authentication; high-risk logins trigger conditional MFA.
+A full-stack risk-based authentication system that adjusts security requirements based on real-time contextual signals. Low-risk logins proceed with password-only verification, while high-risk logins are routed through conditional MFA.
 
 **Live Demo:** [adaptive-auth-production.up.railway.app](https://adaptive-auth-production.up.railway.app)
 
@@ -10,16 +10,16 @@ A full-stack risk-based authentication system that dynamically adjusts security 
 
 ## How It Works
 
-Every login attempt is evaluated by a risk scoring engine that analyzes four signals:
+Each login attempt is evaluated by a risk scoring engine that analyzes four signals:
 
 | Signal | Points | What It Detects |
 |---|---|---|
-| **IP Reputation** | +90 | Login from a known malicious or blacklisted IP prefix |
+| **IP Reputation** | +90 | Login originating from a blacklisted IP prefix |
 | **New Device** | +105 | Device fingerprint not found in the user's trusted devices |
-| **Impossible Travel** | +150 | Login location requires travel speed >1,000 km/h from last known location |
-| **Atypical Time** | +30 | Login hour deviates >3 hours from the user's median login time (last 30 days) |
+| **Impossible Travel** | +150 | Login location requires travel speed exceeding 1,000 km/h from the last known location |
+| **Atypical Time** | +30 | Login hour deviates more than 3 hours from the user's median login pattern |
 
-If the cumulative score meets or exceeds the **threshold of 100**, the system requires OTP verification before granting access. If the OTP is verified successfully, the device is added to the user's trusted devices — reducing friction on future logins from that device.
+Scores are additive. If the total reaches **100 or above**, the system requires OTP verification before granting access. Upon successful verification, the device is added to the user's trusted device list, allowing future logins from that device to bypass MFA. In this way, the system balances security enforcement with user experience.
 
 ![High Risk Simulation](screenshots/impossible-travel.png)
 
@@ -27,16 +27,16 @@ If the cumulative score meets or exceeds the **threshold of 100**, the system re
 
 ## Demo
 
-The live deployment includes a simulation panel with four preset scenarios. The seed button auto-creates a demo account — no registration required.
+The live deployment includes a simulation panel with four preset scenarios. The seed button auto-creates a demo account, so no registration is required.
 
-- **Trusted Login** — Known device, clean IP → low risk, password only
-- **New Device** — Unrecognized device fingerprint → triggers MFA
-- **Blacklisted IP** — Known malicious IP prefix → triggers MFA
-- **Impossible Travel** — Moscow coordinates + blacklisted IP → all signals fire
+- **Trusted Login** : Known device, clean IP. Low risk, password only.
+- **New Device** : Unrecognized device fingerprint. Triggers MFA.
+- **Blacklisted IP** : Known malicious IP prefix. Triggers MFA.
+- **Impossible Travel** : Moscow coordinates with blacklisted IP. All four signals fire.
 
 ![Simulation Panel](screenshots/demo-panel.png)
 
-When MFA is triggered, the user is challenged with a one-time password. In demo mode, the OTP is displayed in the UI banner for easy testing.
+When MFA is triggered, the user is presented with a one-time password challenge. In demo mode, the OTP is displayed directly in the UI banner to allow for testing the full authentication flow without requiring an email integration.
 
 ![OTP Challenge](screenshots/otp-challenge.png)
 
@@ -82,7 +82,7 @@ When MFA is triggered, the user is challenged with a one-time password. In demo 
 
 - **Backend:** Python, FastAPI, SQLAlchemy, bcrypt, python-jose
 - **Frontend:** React, Vite, Tailwind CSS, Axios
-- **Database:** SQLite (dev) — swappable to PostgreSQL via one config change
+- **Database:** SQLite for development, swappable to PostgreSQL via a single configuration change
 - **Deployment:** Railway (Nixpacks builder)
 
 ## Project Structure
@@ -109,15 +109,15 @@ adaptive-auth/
 
 ## Risk Engine Detail
 
-The engine in `risk_engine.py` evaluates each signal independently and sums the results:
+The engine in `risk_engine.py` evaluates each signal independently and produces a cumulative score:
 
-**IP Reputation** — Checks the source IP against a configurable blacklist of known malicious prefixes. In production, this would call an external API like AbuseIPDB.
+**IP Reputation** checks the source IP against a configurable blacklist of known malicious prefixes. In a production environment, this would be replaced with a call to an external API such as AbuseIPDB.
 
-**New Device** — Queries the `trusted_devices` table for the user's device fingerprint. If the fingerprint has never been verified through MFA for this user, it's flagged. Device trust is earned, not assumed — a device only becomes trusted after a successful OTP verification.
+**New Device** queries the `trusted_devices` table for the user's device fingerprint. If the fingerprint has not been previously verified through MFA, it is flagged. Device trust is only granted after a successful OTP verification, not assumed from prior sessions.
 
-**Impossible Travel** — Uses the haversine formula to calculate the great-circle distance between the current login coordinates and the most recent login with location data. Divides by elapsed time to get required travel speed. If the speed exceeds 1,000 km/h (faster than commercial aviation), the login is flagged.
+**Impossible Travel** applies the haversine formula to calculate the great-circle distance between the current login coordinates and the most recent login with location data. The distance is divided by elapsed time to determine the required travel speed. Any speed exceeding 1,000 km/h, which is faster than commercial aviation, triggers the flag.
 
-**Atypical Time** — Calculates the median login hour from the user's last 30 days of successful logins. If the current login hour deviates by more than 3 hours (accounting for midnight wraparound), it's flagged. Requires at least 5 prior logins to establish a baseline.
+**Atypical Time** calculates the median login hour from the user's last 30 days of successful logins. If the current login hour deviates by more than 3 hours, accounting for midnight wraparound, it is flagged. A minimum of 5 prior logins is required to establish a baseline pattern.
 
 ## Running Locally
 
@@ -131,7 +131,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Frontend (optional — dist/ is already committed)
+# Frontend (optional, dist/ is already committed)
 cd frontend
 npm install
 npm run build
@@ -144,13 +144,13 @@ uvicorn app.main:app --reload
 
 ## Design Decisions
 
-- **FastAPI over Flask** — Auto-generated OpenAPI docs, Pydantic type validation, async support out of the box
-- **Single-service deployment** — FastAPI serves the compiled React frontend from `dist/`, eliminating the need for separate frontend hosting or CORS configuration
-- **SQLite for dev, PostgreSQL for prod** — SQLAlchemy abstracts the database layer; switching is a one-line config change
-- **OTP hashed before storage** — SHA-256 hashed, same principle as password handling. 6-digit code, 5-minute expiry, 3 attempt limit
-- **Device trust is earned** — Trust is only granted after successful MFA verification, not assumed from a cookie or session
-- **Risk threshold at 100** — Balanced to require MFA on any new device (+105 alone exceeds threshold) while allowing trusted devices through with password only
+- **FastAPI over Flask**: Provides auto-generated OpenAPI documentation, Pydantic type validation, and async support without additional configuration
+- **Single-service deployment**: FastAPI serves the compiled React build from `dist/`, removing the need for separate frontend hosting or CORS configuration
+- **SQLite for dev, PostgreSQL for prod**: SQLAlchemy abstracts the database layer, making the switch a single-line configuration change
+- **OTP hashed before storage**: SHA-256 hashed prior to storage, following the same security principle as password handling. 6-digit code, 5-minute expiry, 3 attempt maximum
+- **Device trust is earned**: Trust is only granted after successful MFA verification, not assumed from a cookie or prior session
+- **Risk threshold at 100**: Any new device alone (+105) exceeds the threshold and requires MFA, while trusted devices proceed with password-only authentication
 
 ## Author
 
-**Ryan Ramirez** — IAM Engineer | [GitHub](https://github.com/ryan-t-ramirez)
+**Ryan Ramirez** | IAM Engineer | [GitHub](https://github.com/ryan-t-ramirez)
