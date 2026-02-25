@@ -74,6 +74,21 @@ def seed_login_history(username: str, db: Session = Depends(get_db)):
         )
         db.add(attempt)
 
+    # Add a very recent login from Milwaukee (20 min ago)
+    # This ensures the impossible travel simulation can trigger
+    recent_attempt = LoginAttempt(
+        user_id=user.id,
+        timestamp=datetime.now(timezone.utc) - timedelta(minutes=20),
+        ip_address="192.168.1.100",
+        device_fingerprint="home-macbook-pro",
+        location_lat=milwaukee_lat,
+        location_lon=milwaukee_lon,
+        risk_score=0,
+        risk_level="low",
+        success=True,
+    )
+    db.add(recent_attempt)
+
     # Also trust the home device
     existing = db.query(TrustedDevice).filter(
         TrustedDevice.user_id == user.id,
@@ -89,7 +104,7 @@ def seed_login_history(username: str, db: Session = Depends(get_db)):
     db.commit()
     return {
         "success": True,
-        "message": f"Seeded 10 login attempts and trusted device for {username}",
+        "message": f"Seeded 11 login attempts (including 1 recent) and trusted device for {username}",
         "trusted_device": "home-macbook-pro",
         "location": "Milwaukee, WI",
     }
