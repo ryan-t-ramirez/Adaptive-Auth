@@ -131,6 +131,7 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
         risk_score=risk_score,
         require_otp=True,
         pending_auth_id=pending.id,
+        otp_code=otp_code,
     )
 
 

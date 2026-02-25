@@ -28,7 +28,7 @@ function App() {
       if (data.require_otp) {
         setPendingAuthId(data.pending_auth_id)
         setView('otp')
-        setMessage({ type: 'warning', text: 'High-risk login detected. Enter OTP to continue.' })
+        setMessage({ type: 'warning', text: `High-risk login detected. Enter OTP to continue. [DEMO MODE] OTP: ${data.otp_code}` })
       } else if (data.success) {
         setView('dashboard')
         setMessage({ type: 'success', text: 'Login successful — low risk.' })

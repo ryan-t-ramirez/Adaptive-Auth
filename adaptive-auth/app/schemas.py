@@ -31,6 +31,7 @@ class LoginResponse(BaseModel):
     risk_score: Optional[int] = None
     require_otp: bool = False
     pending_auth_id: Optional[int] = None
+    otp_code: Optional[str] = None
 
 
 class AuthResponse(BaseModel):
