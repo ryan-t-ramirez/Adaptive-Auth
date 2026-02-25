@@ -151,6 +151,10 @@ uvicorn app.main:app --reload
 - **Device trust is earned**: Trust is only granted after successful MFA verification, not assumed from a cookie or prior session
 - **Risk threshold at 100**: Any new device alone (+105) exceeds the threshold and requires MFA, while trusted devices proceed with password-only authentication
 
+## Documentation
+
+[Architecture Presentation (PDF)](docs/adaptive-authentication.pdf)
+
 ## Author
 
 **Ryan Ramirez** | IAM Engineer | [GitHub](https://github.com/ryan-t-ramirez)
