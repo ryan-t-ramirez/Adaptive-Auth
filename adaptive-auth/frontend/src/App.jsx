@@ -449,7 +449,7 @@ function App() {
 {/* Simulation Panel */}
         <div className="mt-6 bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
           <h3 className="text-sm font-medium text-gray-300 mb-1">Demo Simulation Panel</h3>
-          <p className="text-xs text-gray-500 mb-4">Test different risk scenarios against the authentication engine</p>
+          <p className="text-xs text-gray-500 mb-4">Test different risk scenarios. Seed button auto-creates demo account</p>
 
           <div className="grid grid-cols-2 gap-3">
             <button

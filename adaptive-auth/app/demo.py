@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
+import bcrypt
 
 from app.database import get_db
 from app.models import User, LoginAttempt, TrustedDevice
@@ -52,7 +53,16 @@ def seed_login_history(username: str, db: Session = Depends(get_db)):
     """
     user = db.query(User).filter(User.username == username).first()
     if not user:
-        return {"success": False, "message": "User not found"}
+        # Auto-create demo user so the simulation panel works out of the box
+        hashed = bcrypt.hashpw("password123".encode('utf-8'), bcrypt.gensalt())
+        user = User(
+            username=username,
+            email=f"{username}@demo.local",
+            password_hash=hashed.decode('utf-8'),
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
 
     # Add 10 successful logins from Milwaukee over the past 30 days
     # All between 8am-6pm CT (typical work hours)
